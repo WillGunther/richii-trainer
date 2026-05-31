@@ -494,7 +494,7 @@ function HandDisplay({ problem, beginnerMode }: { problem: Problem; beginnerMode
         <div>
           <span className="detail-label">Win</span>
           <div className="win-value">
-            <Tile tile={hand.winningTile} beginnerMode={beginnerMode} rotated />
+            <Tile tile={hand.winningTile} beginnerMode={beginnerMode} rotated={hand.winMethod === "ron"} />
             <strong>{hand.winMethod}</strong>
           </div>
         </div>
@@ -806,6 +806,21 @@ function ReportFooter({ problemId }: { problemId: string }) {
   );
 }
 
+function EndOfHandsNotice({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="notice-backdrop" role="presentation">
+      <section className="panel notice-dialog" role="dialog" aria-modal="true" aria-labelledby="end-of-hands-title">
+        <p className="eyebrow">Table reset</p>
+        <h2 id="end-of-hands-title">You reached the end of the current hands</h2>
+        <p>The trainer reshuffled the set, so hands you have already seen will appear again. More hands will be generated in the future once we are confident in the generation process.</p>
+        <button className="primary-action" type="button" onClick={onDismiss}>
+          Continue
+        </button>
+      </section>
+    </div>
+  );
+}
+
 export default function App() {
   const initialQueue = useMemo(() => shuffleProblemIds(), []);
   const [currentProblemId, setCurrentProblemId] = useState(initialQueue[0] ?? problems[0]?.id ?? "");
@@ -825,6 +840,7 @@ export default function App() {
   const [submitted, setSubmitted] = useState(false);
   const [sessionCounted, setSessionCounted] = useState(false);
   const [session, setSession] = useState({ correct: 0, incorrect: 0, skipped: 0 });
+  const [showEndOfHandsNotice, setShowEndOfHandsNotice] = useState(false);
 
   const problem = problems.find((candidate) => candidate.id === currentProblemId) ?? problems[0];
 
@@ -855,8 +871,13 @@ export default function App() {
       }));
     }
 
-    const nextQueue = handQueue.length > 0 ? handQueue : shuffleProblemIds(problem.id);
+    const reachedEndOfHands = handQueue.length === 0;
+    const nextQueue = reachedEndOfHands ? shuffleProblemIds(problem.id) : handQueue;
     const [nextProblemId, ...remainingQueue] = nextQueue;
+
+    if (reachedEndOfHands) {
+      setShowEndOfHandsNotice(true);
+    }
 
     setCurrentProblemId(nextProblemId ?? problem.id);
     setHandQueue(remainingQueue);
@@ -911,6 +932,10 @@ export default function App() {
       ) : null}
 
       <ReportFooter problemId={problem.id} />
+
+      {showEndOfHandsNotice ? (
+        <EndOfHandsNotice onDismiss={() => setShowEndOfHandsNotice(false)} />
+      ) : null}
     </main>
   );
 }
